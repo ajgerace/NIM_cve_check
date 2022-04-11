@@ -16,11 +16,9 @@ def buildAuthHeader():
     return encodeStr.decode()
 
 def retrieveInventory():
-
     authStr = buildAuthHeader()
-
     headers = {
-        'Authorization': 'Basic ' + str(authStr),
+        'Authorization': 'Basic ' + authStr,
         'Content-Type': 'application/json'
     }
     nimHost = input('Enter the hostname or IP address for your NIM instance: ').rstrip('\n')
