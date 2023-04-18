@@ -42,17 +42,32 @@ def retrieveInventory():
         print('An error occurred ' + str(response.status_code) )
 
         
-def checkForVuln(vulnStartStr, vulnEndStr, version):
+def checkForVuln(vulnStr, ver):
     vulnerable = False
-    if vulnStartStr == 'single':
-        if parse_version(version) == parse_version(vulnEndStr):
-            vulnerable = True
+    if ',' in vulnStr:
+        vulnVerList = vulnStr.split(', ') 
+        for vulVer in vulnVerList:
+            if '-' in vulVer:
+                (vulnStartStr,vulnEndStr ) = vulVer.split('-')       
+                if parse_version(ver) < parse_version(vulnEndStr):
+                    if parse_version(ver) >= parse_version(vulnStartStr):
+                        vulnerable = True
+                elif parse_version(ver) == parse_version(vulnEndStr):
+                    vulnerable = True
+            else:
+                if parse_version(ver) == parse_version(vulVer):
+                    vulnerable = True
     else:
-        if parse_version(version) < parse_version(vulnEndStr):
-            if parse_version(version) >= parse_version(vulnStartStr):
+        if '-' in vulnStr:
+            (vulnStartStr,vulnEndStr ) = vulnStr.split('-') 
+            if parse_version(ver) < parse_version(vulnEndStr):
+                if parse_version(ver) >= parse_version(vulnStartStr):
+                    vulnerable = True
+            if parse_version(ver) == parse_version(vulnEndStr):
                 vulnerable = True
-        if parse_version(version) == parse_version(vulnEndStr):
-            vulnerable = True
+        else:
+          if parse_version(ver) == parse_version(vulnStr):
+                vulnerable = True  
     return vulnerable
 
 def pullAdvisoryFile():
@@ -75,11 +90,12 @@ def parseAdvisories():
         advisoryURL = rec.getAttribute('advisory')
         cveNum = rec.getAttribute('cve')
         vulnerableStr = rec.getAttribute('vulnerable')
-        advisoryList[name] = {}
-        advisoryList[name]['severity'] = sev
-        advisoryList[name]['url'] = advisoryURL
-        advisoryList[name]['cve'] = cveNum
-        advisoryList[name]['vulnVersions'] = vulnerableStr
+        advisoryList[cveNum] = {}
+        advisoryList[cveNum]['name'] = name
+        advisoryList[cveNum]['severity'] = sev
+        advisoryList[cveNum]['url'] = advisoryURL
+        advisoryList[cveNum]['cve'] = cveNum
+        advisoryList[cveNum]['vulnVersions'] = vulnerableStr
 
     
         
@@ -96,31 +112,18 @@ for dev in deviceList:
         deviceVersion = deviceList[dev]['version']
         devInstanceType = deviceList[dev]['instanceType']
         x = 0
-        for vuln in advisoryList:
-            vulnerableStr = advisoryList[vuln]['vulnVersions']
-            if '-' in vulnerableStr:
-                if ',' in vulnerableStr:
-                    vulnVersionList = vulnerableStr.split(', ')
-                    for vulnStr in vulnVersionList:
-                        (vulnStart, vulnEnd) = vulnStr.split('-')
-                        isVulnerable = checkForVuln(vulnStart, vulnEnd, deviceVersion)
-                else:
-                    (vulnStart, vulnEnd) = vulnerableStr.split('-')
-                    isVulnerable = checkForVuln(vulnStart, vulnEnd, deviceVersion) 
-            else:
-                vulnStart = 'single'
-                vulnEnd = vulnerableStr
-                isVulnerable = checkForVuln(vulnStart,vulnEnd, deviceVersion)             
+        for cve in advisoryList:
+            vulnerableStr = advisoryList[cve]['vulnVersions']
+            isVulnerable = checkForVuln(vulnerableStr, deviceVersion)
             if isVulnerable:
                 if x == 0:
                     output += "\n******** " + deviceName + " - " + devInstanceType +  " - " + deviceVersion + " ********\n"
                     x +=1
                 output += "\t**** Vulnerability ****\n"
-                output += "\tName: " + vuln + '\n'
-                output += '\tSeverity: ' + advisoryList[vuln]['severity'] + '\n'
-                output += '\tCVE: ' + advisoryList[vuln]['cve'] + '\n'
-                output += '\tURL:' + advisoryList[vuln]['url'] + '\n'
+                output += "\tName: " + advisoryList[cve]['name'] + '\n'
+                output += '\tSeverity: ' + advisoryList[cve]['severity'] + '\n'
+                output += '\tCVE: ' + cve + '\n'
+                output += '\tURL:' + advisoryList[cve]['url'] + '\n'
                 output += '\tVulnerable versions: ' + vulnerableStr + '\n'
                 output += '\n'
 print(output)
-
